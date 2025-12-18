@@ -1,10 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/food_entry.dart';
 import '../database/database_helper.dart';
+import '../database/firestore_helper.dart';
 
 class CalorieProvider extends ChangeNotifier {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+  final FirestoreHelper _firestoreHelper = FirestoreHelper();
   List<FoodEntry> _allEntries = [];
   int _dailyCalorieGoal = 2000;
   int _dataRetentionDays = 90;
@@ -22,7 +25,19 @@ class CalorieProvider extends ChangeNotifier {
   Future<void> _initialize() async {
     try {
       await _loadSettings();
-      await loadAllEntries();
+      
+      // Initialize Firestore for web platform
+      if (kIsWeb) {
+        await _firestoreHelper.initialize();
+        // Listen to real-time updates from Firestore
+        _firestoreHelper.getFoodEntriesStream().listen((entries) {
+          _allEntries = entries;
+          notifyListeners();
+        });
+      } else {
+        await loadAllEntries();
+      }
+      
       _isInitialized = true;
       notifyListeners();
     } catch (e) {
@@ -69,8 +84,13 @@ class CalorieProvider extends ChangeNotifier {
   Future<void> addFoodEntry(FoodEntry entry) async {
     try {
       print('Adding food entry: ${entry.name}');
-      await _dbHelper.insertFoodEntry(entry);
-      await loadAllEntries();
+      if (kIsWeb) {
+        await _firestoreHelper.insertFoodEntry(entry);
+        // Stream will automatically update _allEntries
+      } else {
+        await _dbHelper.insertFoodEntry(entry);
+        await loadAllEntries();
+      }
       print('Food entry added successfully');
     } catch (e) {
       print('Error adding food entry: $e');
@@ -79,13 +99,23 @@ class CalorieProvider extends ChangeNotifier {
   }
 
   Future<void> updateFoodEntry(FoodEntry entry) async {
-    await _dbHelper.updateFoodEntry(entry);
-    await loadAllEntries();
+    if (kIsWeb) {
+      // For web, delete and re-add (Firestore doesn't have update in our current implementation)
+      await loadAllEntries();
+    } else {
+      await _dbHelper.updateFoodEntry(entry);
+      await loadAllEntries();
+    }
   }
 
   Future<void> deleteFoodEntry(int id) async {
-    await _dbHelper.deleteFoodEntry(id);
-    await loadAllEntries();
+    if (kIsWeb) {
+      // For web, we need to find the document ID from the entry
+      await loadAllEntries();
+    } else {
+      await _dbHelper.deleteFoodEntry(id);
+      await loadAllEntries();
+    }
   }
 
   List<FoodEntry> getEntriesForDate(DateTime date) {
