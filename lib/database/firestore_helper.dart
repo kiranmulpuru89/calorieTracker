@@ -6,30 +6,15 @@ class FirestoreHelper {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
-  String? _userId;
-
-  // Initialize and authenticate user anonymously
-  Future<void> initialize() async {
-    try {
-      // Sign in anonymously if not already signed in
-      if (_auth.currentUser == null) {
-        await _auth.signInAnonymously();
-        print('Signed in anonymously');
-      }
-      _userId = _auth.currentUser?.uid;
-      print('User ID: $_userId');
-    } catch (e) {
-      print('Error initializing Firestore: $e');
-      rethrow;
-    }
-  }
+  String? get userId => _auth.currentUser?.uid;
 
   // Get reference to user's food entries collection
   CollectionReference get _entriesCollection {
-    if (_userId == null) {
+    final uid = userId;
+    if (uid == null) {
       throw Exception('User not authenticated');
     }
-    return _firestore.collection('users').doc(_userId).collection('foodEntries');
+    return _firestore.collection('users').doc(uid).collection('foodEntries');
   }
 
   // Add a food entry

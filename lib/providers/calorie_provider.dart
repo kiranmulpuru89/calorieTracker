@@ -26,9 +26,8 @@ class CalorieProvider extends ChangeNotifier {
     try {
       await _loadSettings();
       
-      // Initialize Firestore for web platform
+      // Use Firestore for web platform
       if (kIsWeb) {
-        await _firestoreHelper.initialize();
         // Listen to real-time updates from Firestore
         _firestoreHelper.getFoodEntriesStream().listen((entries) {
           _allEntries = entries;

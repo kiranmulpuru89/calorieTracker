@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/calorie_provider.dart';
+import '../providers/auth_provider.dart' as auth;
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -138,6 +140,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           _buildGoalPresetChip('Muscle Gain (2500 cal)', 2500, provider),
                           _buildGoalPresetChip('Athletic (3000 cal)', 3000, provider),
                         ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Account section
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Account',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      const SizedBox(height: 16),
+                      StreamBuilder<User?>(
+                        stream: FirebaseAuth.instance.authStateChanges(),
+                        builder: (context, snapshot) {
+                          final user = snapshot.data;
+                          final email = user?.email;
+                          final isAnonymous = user?.isAnonymous ?? true;
+                          
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (email != null && !isAnonymous) ...[
+                                Row(
+                                  children: [
+                                    const Icon(Icons.email, size: 20),
+                                    const SizedBox(width: 8),
+                                    Text(email),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: () async {
+                                    final authProvider = context.read<auth.UserAuthProvider>();
+                                    await authProvider.signOut();
+                                  },
+                                  icon: const Icon(Icons.logout),
+                                  label: const Text('Sign Out'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.red,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),
